@@ -1,0 +1,16 @@
+Name: Tianming (Mark) Xu homework 1
+
+How to compile: 
+	I have written a Makefile, the default "make" command will let you compile the microcat program. If you want to compile hw1a or hw1b, you need to input "make hw1a" or "make hw1b" to compile. Also, since testing microcat might create some test files, I also have a "make clean" command to delete all files except .c files.
+
+How to run it:
+	1. For hw1a, you just need to input "./hw1a" and it will start printing. You have to kill the program by typing control-c.
+	2. For hw1b, you have several options: first, you can directly input "./hw1b" and the interval for printing will be set as 1 second; second, if you want to set your own interval, you can iunput "./hw1b -s x" x is the number of second you want the program to give you rate of interrupt. Please be noticed that only "-s" works as valid flag, for any other flag, "-f" for example, the program will warn you and exit. Similarly, the third argument (x), should be number. Otherwise, program will terminate and report the error. You have to terminate the program by typing control-c./
+	3. For Microcat,you also have several options: if you just input "./microcat", then you can type anything in terminal and it will print the same thing on next line; if you type "./microcat f1 f2..." f1, f2 are the files name, microcat will print all the contents in those files on terminal; if you input "./microcat -", you will have the same result as inputing "./microcat"; if you input "./microcat f1 f2 ... '>' fx", all the contents in f1 f2... until the last file before '>' will be written into file 'fx'.  Please be notices that if you want to redirect file, you should input '>' instead of >.
+
+Known bugs and limitations:
+	The current limitations I have is that my "-" and "'>'" flags don't work exactly like the ones for cat. If you type "./microcat - '>' ", then the program fail because it can not open "-" as a file. I have already fixed this problem now.
+	The second limitation is that, cat can do such thing like "cat f1 > f2 f3" and then write content of f1 and f3 into f2. My microcat can do such fancy thing. All the input files should be on the left of '>'.
+
+file directory:
+	I think for this assignment I don't have multiple source files other than all the .c files I have, which will all be compiled. Just be noticed, if you use ./microcat and redirect some files to a non-existing file, you will create a new file automatically, whose name is what you input as the output file of redirection.

@@ -1,0 +1,18 @@
+Name: Tianming (Mark) Xu homework 2
+
+How to compile: 
+	I have written a Makefile, the default "make" command will let you compile the mysh program. If you want to compile the matrix program, you need to input "make matrix" to compile. I also have a "make clean" command to delete all files except .c files.
+
+How to run it:
+	1. For matrix program, there is only one option: to input "./matrix" to run the program. And the program will print the matrix A and matrix B and their produce, which stores in matrix C. And each thread will sleep arbitrary seconds (no larger than 10s) before they update the max_row_sum. Finally, it will show up the maximum row sum. 
+	3. For running mysh program, only one default option: "./mysh", and if you see the prompt: "(╯‵□′)╯︵┻━┻:" you are in my shell now. In my shell, most of commands don't work like what they should be. But you are certainly able to use "ls,pwd,cat" and my builtin functions "exit, history, !! !n !-n", (n represents for a positive number, start from 1). Some limitations will be stated below. 
+
+Known bugs and limitations:
+	First of all, it is weird to find that my program can not store anything after "cd" command in the history struct.
+	Secondly, my !! command can not do things like "!! f1 f2" can use f1 and f2 as argument of last command. Same as "!-n" and "!n".
+	Furthermore, I found that if I run the program in valgrind, there will be some read errors. It always happen when the the head moves from the end of array to the start of array. I am finding the way to fix the problems, but the reason is still unknown. I guess it might be the malloc and arrangement of string.
+	There is also a underlying problem. When I use "!-2" this command, it sometimes crash. But normally, this does not happen. I don't quite understand why.
+	Also, it will cause memory leak if you unexpectedly exit the program, since the cir_buf_clean is not called normally by the program. Since the all the line string will be stored in char* line in history, but has no chance to be free. However, since the program ends, it will deal with those memory automatically.
+
+file directory:
+	The mysh program needs two extra files to support: cir_buf.h and cir_buf.c . These two files implement the circular buffer data structure I use to store all the commands typed in before, which inspired by ziting Shen and this tutorial: https://embeddedartistry.com/blog/2017/4/6/circular-buffers-in-cc .

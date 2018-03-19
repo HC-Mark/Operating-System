@@ -11,6 +11,7 @@
 #include <queue>
 #include <signal.h>
 #include <vector>
+#include <fstream>
 #include <sys/time.h>
 #include <ctime>
 //#include <valgrind.h>
@@ -39,11 +40,13 @@ static char* sch_stack;
 static int total_thread = 0;
 static int total_runtime = 0;
 static int priority; //keep track of priority of thread
+static ofstream logfile;
 //for keeping track of time
 static struct timeval tv;
 static time_t lib_begin;
 static time_t cur_time;
 static struct itimerval clocktick;
+static sigset_t signal_set;
 //typedef void (*func)(void *); //seems a better way to represent void (*func)(void *)
 struct mythread {
   //general member
@@ -89,6 +92,8 @@ static void delete_thread(mythread* cur);
 static void dispatcher(); //scheduler function
 static int stub(void (*func) (void*), void* arg); //stub function
 static void catcher(int sig); // signal handler for priority scheduling
+static void protect();
+static void release();
 
 /*
 // --own test part 
@@ -179,6 +184,8 @@ int thread_libinit(int policy) {
       clocktick.it_value.tv_usec = QUANTUM;
       clocktick.it_interval.tv_sec = 0;
       clocktick.it_interval.tv_usec = QUANTUM;
+      sigemptyset(&signal_set);
+      sigaddset(&signal_set,SIGALRM);
     }
     else if(type == SJF) {
       cout << "we are in SJF" << endl;
@@ -206,6 +213,8 @@ int thread_libinit(int policy) {
     delete main;
     return FAILED;
   }
+  logfile.open("logfile.txt");
+  logfile <<"Note: the main thread is thread with TID 0" << endl;
   return SUCCEED;
 }
 
@@ -285,8 +294,10 @@ int thread_create(void (*func)(void *), void *arg, int priority) {
     tmp->wait_size = 0;
     makecontext(tmp->uc, (void (*)())stub,2,func,arg);
     
+    protect();
     tmp->tid = id;
     id++;
+    release();
     tmp->state = CREATED;
     //add to different queue
     if(type == FIFO) {
@@ -303,13 +314,13 @@ int thread_create(void (*func)(void *), void *arg, int priority) {
     else {
       tmp->priority = priority;
       if(priority == HIGH) {
-	first.insert(first.begin(),tmp);
+	       first.push_back(tmp);
       }
       else if(priority == MID) {
-	second.insert(second.begin(),tmp);
+	       second.push_back(tmp);
       }
       else {
-	third.insert(third.begin(),tmp);
+	       third.push_back(tmp);
       }
     }
   }
@@ -363,15 +374,17 @@ int thread_yield(void) {
   }
   //priority scheduling
   else {
+    protect();
     if(current->priority == HIGH) {
-      first.insert(first.begin(),current);
+      first.push_back(current);
     }
     else if(current->priority == MID) {
-      second.insert(second.begin(),current);
+      second.push_back(current);
     }
     else {
-      third.insert(third.begin(),current);
+      third.push_back(current);
     }
+    release();
     makecontext(scheduler,dispatcher,0); //update scheduler                
     swapcontext(current->uc, scheduler);
   }
@@ -530,15 +543,15 @@ static void dispatcher() {
 
     //revive suspended threads. -- need to move into each type later
     if(current->state == FINISHED){
+      cout << "#############thread " << current->tid << " finished successfully###################### "<< endl; 
       if(!current->wait_tids.empty()) {
-	cout << "in here?" << endl;
-	for(int i = 0; i < current->wait_size ; i++) {
-	  for(int j = 0; j < suspended.size() ; j++) {
-	    if(current->wait_tids[i] == suspended[j]->tid) {
-	      fifoq.push(suspended[j]);
-	      suspended.erase(suspended.begin() + j);
-	      cout << "size of suspended after moving " << current->wait_tids[i] << " is " << suspended.size() <<endl;
-	      break;
+	     for(int i = 0; i < current->wait_size ; i++) {
+	       for(int j = 0; j < suspended.size() ; j++) {
+	         if(current->wait_tids[i] == suspended[j]->tid) {
+	           fifoq.push(suspended[j]);
+	           suspended.erase(suspended.begin() + j);
+	           cout << "size of suspended after moving " << current->wait_tids[i] << " is " << suspended.size() <<endl;
+	           break;
 	    }
 	  }
 	}
@@ -562,6 +575,7 @@ static void dispatcher() {
 
     //revive suspended threads. -- need to move into each type later
     if(current->state == FINISHED){
+      cout << "#############thread " << current->tid << " finished successfully###################### "<< endl;
       if(!current->wait_tids.empty()) {
 	for(int i = 0; i < current->wait_size ; i++) {
 	  for(int j = 0; j < suspended.size() ; j++) {
@@ -587,25 +601,28 @@ static void dispatcher() {
   else {
     if(first.empty() && second.empty() && third.empty()) {
       cout << "warning all three queues are empty!" << endl;
+      protect();
       swapcontext(scheduler, main_thread->uc);
     }
 
     
     //revive suspended threads. -- need to move into each type later            
     if(current->state == FINISHED){
+      cout << "#############thread " << current->tid << " finished successfully###################### "<< endl; 
       if(!current->wait_tids.empty()) {
-        cout << "in here?" << endl;
         for(int i = 0; i < current->wait_size ; i++) {
           for(int j = 0; j < suspended.size() ; j++) {
             if(current->wait_tids[i] == suspended[j]->tid) {
+              protect();
 	      int pt = suspended[j] -> priority;
 	      if(pt == -1)
-		first.insert(first.begin(),suspended[j]);
+		first.push_back(suspended[j]);
 	      else if(pt == 0)
-		second.insert(second.begin(),suspended[j]);
+		second.push_back(suspended[j]);
 	      else
-		third.insert(third.begin(),suspended[j]);
+		third.push_back(suspended[j]);
               suspended.erase(suspended.begin() + j);
+              release();
               //cout << "size of suspended after moving " << current->wait_tids[i] << " is " << suspended.size() <<endl;
               break;
             }
@@ -649,6 +666,7 @@ static void dispatcher() {
       }
     }
     //what if higher priority queue is empty -- move to next level
+    protect();
     if(temp_pri == HIGH) {
       tmp = first.front();
       first.erase(first.begin());
@@ -661,6 +679,7 @@ static void dispatcher() {
       tmp = third.front();
       third.erase(third.begin());
     }
+    release();
     current = tmp;
     //printf("current queue size is %d\n", fifoq.size());
     printf("we will run thread %d, its prirority is %d\n", current->tid, current->priority);
@@ -694,4 +713,12 @@ static int stub(void (*func)(void *), void *arg) {
 static void catcher(int sig) {
   //cout << "current thread has priority " << current->priority << endl;
   thread_yield();
+}
+
+static void protect() {
+  sigprocmask(SIG_BLOCK, &signal_set, NULL);
+}
+
+static void release() {
+  sigprocmask(SIG_UNBLOCK, &signal_set, NULL);
 }

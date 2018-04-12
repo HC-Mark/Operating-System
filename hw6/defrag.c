@@ -117,6 +117,7 @@ int main(int argc, char** argv) {
   clean_inode(new_cur,num_node);
   //write in the last part of file
   if(w_buffer_ptr != 0) {
+    printf("w_buffer_ptr is now %d\n",w_buffer_ptr);
     write_in();
   }
   //we need to update superblock and update in the file
@@ -132,10 +133,12 @@ int main(int argc, char** argv) {
   char* swap_region = (char*)(file_buffer + data_end);
   printf("the input size is %ld, and the swap_region starts at %ld\n",input_size, data_end);
   if(data_end < (long)input_size){
+    printf("copy swap_region\n");
     fwrite(swap_region, ((long)input_size - data_end), 1, fp_w);
   }
   //fwrite(swap_region, (input_size - data_end), 1, fp_w);
   //test whether things are ok in file
+  /*
   fseek(fp_w,H_UNIT,SEEK_SET);
   fread(new_super,H_UNIT,1,fp_w);
   fread(new_i_region, (inode_end-inode_start),1,fp_w);
@@ -158,7 +161,6 @@ int main(int argc, char** argv) {
   //fseek(fp_w, data_start, SEEK_SET);
   //fread(tmp_buffer, (input_size-inode_end), 1, fp_w);
   //fwrite(tmp_buffer, (input_size-inode_end), 1, fp);
-  /*
   printf("###################print old inode list####################\n ");
   Inode* cur = inode_head;
   for(int i = 0; i < inode_num; i++) {
@@ -186,7 +188,7 @@ void write_in() {
   //write in test file
   //int test_addr_w = data_addr_w - inode_end;
   //fseek(fp_test, test_addr_w, SEEK_SET);
-  fwrite(write_buffer, w_buffer_ptr, 1, fp_test);
+  //fwrite(write_buffer, w_buffer_ptr, 1, fp_test);
   //move to next available byte
   fseek(fp_w,data_addr_w,SEEK_SET);
   fwrite(write_buffer, w_buffer_ptr, 1, fp_w);
@@ -203,6 +205,10 @@ int Dblock_copy(int index) {
   //memcpy(test, (void*)data_address, block_size);
   for (int i = 0; i < block_size; i++) {
     write_buffer[w_buffer_ptr++] = file_buffer[data_address+i];
+    // eileen xiagai
+    void* fileblock = file_buffer + data_address+i;
+    fwrite(fileblock, 1, 1, fp_test);
+    // eileen xiagai
   }
   return data_index_w++;
 }
